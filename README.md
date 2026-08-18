@@ -83,6 +83,27 @@ rpa-ponto run
 Use `RPA_HEADLESS=false` durante a configuração assistida. Quando o fluxo estiver
 estável, mude para `true`.
 
+### Executar sem abrir a janela do navegador
+
+Para executar todo o RPA apenas pelo terminal, configure no `.env`:
+
+```dotenv
+RPA_HEADLESS=true
+```
+
+O Playwright ainda utiliza o Chromium internamente, mas nenhuma janela é exibida.
+O acesso ao ERP, a importação do AFD, o logout, os screenshots, o relatório local
+e a publicação na Cloudflare continuam funcionando normalmente.
+
+Depois execute o mesmo comando do fluxo completo:
+
+```powershell
+.\.venv\Scripts\rpa-ponto.exe run
+```
+
+Para acompanhar visualmente as ações durante testes ou ajustes, altere novamente
+para `RPA_HEADLESS=false`.
+
 `RPA_GLOBAL_DELAY_MS=300` define o tempo padrão entre as ações. Para personalizar
 uma ação individual, edite `ACTION_DELAYS_MS` em `src/rpa_ponto/timings.py`.
 `None` herda o tempo global; um número substitui o global somente naquela ação.

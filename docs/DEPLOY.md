@@ -43,6 +43,8 @@ cp .env.example .env
 ```
 
 Em um servidor Linux sem ambiente gráfico, configure `RPA_HEADLESS=true`.
+Nesse modo, o Chromium roda invisível. A automação do ERP, os screenshots, o
+relatório e a publicação na Cloudflare permanecem ativos.
 
 ## 4. Configuração do `.env`
 
@@ -65,6 +67,10 @@ CLOUDFLARE_PAGES_ENABLED=true
 CLOUDFLARE_PAGES_PROJECT=rpa-ponto-monitor
 CLOUDFLARE_PAGES_BRANCH=main
 ```
+
+Use `RPA_HEADLESS=false` somente quando precisar enxergar o navegador para testar
+ou diagnosticar o fluxo. Em produção, `true` permite executar apenas pelo terminal
+ou por um agendador.
 
 O `.env` contém credenciais, está ignorado pelo Git e não deve ser publicado.
 Consulte `.env.example` para todas as opções disponíveis.
@@ -142,4 +148,3 @@ cron ou outra ferramenta de agendamento da máquina.
 
 O processo agendado deve iniciar na pasta raiz do projeto, pois o `.env`,
 `output` e `node_modules` são resolvidos a partir dela.
-
