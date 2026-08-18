@@ -261,8 +261,12 @@ O Account ID identifica a conta e não é a senha ou o token.
    **Account > Cloudflare Pages > Edit**.
 6. Em **Account Resources**, use **Include > Specific account** e selecione apenas
    a conta que contém `rpa-ponto-monitor`.
-7. Selecione **Continue to summary > Create Token**.
-8. Copie o token assim que ele for exibido e grave somente no `.env`:
+7. Opcionalmente, em **Client IP Address Filtering**, restrinja o token ao IP
+   estático da máquina Linux usando o formato `IP/32`, por exemplo
+   `98.82.31.2/32`. Ao migrar de servidor, atualize essa restrição para o novo IP
+   antes de testar a publicação.
+8. Selecione **Continue to summary > Create Token**.
+9. Copie o token assim que ele for exibido e grave somente no `.env`:
 
 ```dotenv
 CLOUDFLARE_API_TOKEN=cole_o_token_aqui
@@ -271,6 +275,35 @@ CLOUDFLARE_API_TOKEN=cole_o_token_aqui
 Não use a Global API Key, não adicione permissões de zona e não grave o token
 no Git, em comandos do terminal ou em capturas de tela. Mantenha o `.env` com
 permissão `600`, como definido na etapa de instalação.
+
+### Gravar as credenciais no servidor
+
+No PowerShell do computador administrativo, conecte-se usando a chave e o IP
+estático correspondentes à instância:
+
+```powershell
+ssh -i "C:\caminho\LightsailDefaultKey-regiao.pem" ubuntu@IP_ESTATICO
+```
+
+No servidor, abra o arquivo como o usuário do serviço. Não tente lê-lo como
+`ubuntu`: a permissão `600` deve impedir esse acesso.
+
+```bash
+sudo -u rpa-ponto -H nano /opt/rpa-ponto/.env
+```
+
+Preencha as linhas existentes, sem aspas e sem criar chaves duplicadas:
+
+```dotenv
+CLOUDFLARE_PAGES_ENABLED=true
+CLOUDFLARE_PAGES_PROJECT=rpa-ponto-monitor
+CLOUDFLARE_PAGES_BRANCH=main
+CLOUDFLARE_ACCOUNT_ID=cole_o_account_id
+CLOUDFLARE_API_TOKEN=cole_o_token
+```
+
+No Nano, use `Ctrl+O`, Enter e `Ctrl+X`. Nunca cole o conteúdo completo do
+`.env` em tickets, chats ou logs.
 
 ### Escolher a forma de autenticação
 
@@ -297,17 +330,26 @@ CLOUDFLARE_API_TOKEN=<token restrito à conta e ao Cloudflare Pages>
 
 Não grave o token no repositório. O arquivo `.env` é carregado pelo RPA e as
 variáveis são herdadas pelo Wrangler. O login OAuth ou as duas variáveis acima
-são alternativas; não é necessário usar ambas.
+são alternativas; não é necessário usar ambas. Em um serviço systemd sem
+navegador, use o token.
 
-Valide as credenciais no Linux sem mostrar o token:
+Valide as credenciais e publique o relatório existente sem executar o ERP:
 
 ```bash
-sudo -u rpa-ponto -H sh -c 'cd /opt/rpa-ponto && npx wrangler whoami'
+cd /opt/rpa-ponto
+sudo -u rpa-ponto -H .venv/bin/rpa-ponto publish
 ```
 
-O comando deve listar a conta esperada. Se retornar erro de autenticação,
-confira o Account ID, a permissão **Cloudflare Pages: Edit**, o escopo da conta e
-se o token foi copiado por inteiro.
+O comando deve imprimir `Relatório online` e a URL da implantação. Se retornar
+`In a non-interactive environment`, `CLOUDFLARE_API_TOKEN` está ausente ou vazio
+no `.env`. Se retornar erro de autorização, confira o Account ID, a permissão
+**Cloudflare Pages: Edit**, o escopo da conta, o filtro de IP e se o token foi
+copiado por inteiro.
+
+Depois da primeira publicação, abra
+<https://rpa-ponto-monitor.pages.dev/> e confirme que o screenshot mais recente
+é exibido. Com `CLOUDFLARE_PAGES_ENABLED=true`, as execuções futuras publicarão
+automaticamente tanto resultados concluídos quanto falhas capturadas.
 
 ## 7. Validação antes de colocar em produção
 
@@ -435,3 +477,86 @@ aprovado somente quando:
 - o relatório mostrar importação e logout concluídos;
 - <https://rpa-ponto-monitor.pages.dev/> receber a nova execução;
 - `systemctl list-timers rpa-ponto.timer` mostrar o próximo horário.
+
+## 11. Diagnóstico e migração para outro Linux
+
+### Atualização pelo usuário correto
+
+O instalador mantém dois locais distintos: o clone inicial usado para executar o
+instalador e a aplicação definitiva em `/opt/rpa-ponto`. O systemd usa somente a
+aplicação em `/opt/rpa-ponto`, que pertence ao usuário `rpa-ponto`.
+
+Um `git pull` executado como `ubuntu` retorna `detected dubious ownership`. Não
+adicione `safe.directory` e não mude o proprietário. Depois de enviar o commit ao
+GitHub, atualize assim:
+
+```bash
+sudo -u rpa-ponto -H git -C /opt/rpa-ponto pull --ff-only
+sudo -u rpa-ponto -H /opt/rpa-ponto/.venv/bin/python -m pip install -e "/opt/rpa-ponto[dev]"
+sudo -u rpa-ponto -H git -C /opt/rpa-ponto log -1 --oneline
+```
+
+### Servidor sem interface gráfica
+
+Estas configurações devem existir no `.env` do Linux:
+
+```dotenv
+RPA_HEADLESS=true
+ERP_LOCALE=pt-BR
+```
+
+`RPA_HEADLESS=false` tenta abrir uma janela e falha com `Missing X server or
+$DISPLAY`. `ERP_LOCALE=pt-BR` evita que o ERP troque campos como `Usuário` por
+`User` devido ao idioma padrão do Linux.
+
+### Consultar a execução que falhou
+
+Consulte primeiro o journal, sem executar novamente e gerar outro AFD:
+
+```bash
+sudo systemctl status rpa-ponto.service --no-pager --full
+sudo journalctl -u rpa-ponto.service --since "10 minutes ago" --no-pager
+```
+
+O journal informa o ID da execução. Use esse ID para listar as etapas e imagens:
+
+```bash
+sudo grep -E '"name"|"status"|"message"' \
+  /opt/rpa-ponto/output/monitor/runs/ID_DA_EXECUCAO/run.json
+sudo find /opt/rpa-ponto/output/monitor/runs/ID_DA_EXECUCAO \
+  -maxdepth 1 -type f -name '*.png' -printf '%f\n'
+```
+
+Se a Cloudflare ainda não estiver configurada, copie um screenshot para o
+usuário administrativo:
+
+```bash
+sudo install -o ubuntu -g ubuntu -m 600 \
+  /opt/rpa-ponto/output/monitor/runs/ID_DA_EXECUCAO/ARQUIVO.png \
+  /home/ubuntu/falha-rpa.png
+```
+
+Saia do SSH com `exit` e, no PowerShell local, faça o download. Substitua os
+valores em maiúsculas; não escreva literalmente `IP_ESTATICO`:
+
+```powershell
+scp -i "C:\caminho\LightsailDefaultKey-regiao.pem" `
+  ubuntu@IP_ESTATICO:/home/ubuntu/falha-rpa.png `
+  "$env:USERPROFILE\Downloads\falha-rpa.png"
+```
+
+Digitar o caminho da imagem como se fosse um comando retorna `Permission denied`;
+um servidor headless não abre a imagem no terminal. Baixe-a por SCP ou consulte-a
+no relatório do Pages.
+
+### Checklist de uma nova migração
+
+1. associe um novo IP estático e libere-o no firewall do ERP;
+2. execute o instalador automático da seção 3;
+3. transfira o AFD mais recente para preservar o sequencial;
+4. configure `RPA_HEADLESS=true` e `ERP_LOCALE=pt-BR`;
+5. crie um novo token da Cloudflare ou atualize o filtro de IP do token existente;
+6. preencha o novo `.env`, que nunca é transferido pelo Git;
+7. teste primeiro a publicação com `rpa-ponto publish`;
+8. execute uma importação controlada e confira journal, screenshots e logout;
+9. somente então ative `rpa-ponto.timer` e desative definitivamente a máquina antiga.
