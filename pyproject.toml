@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meu-rpa-ponto"
+version = "0.1.0"
+description = "Coleta registros de ponto e importa o arquivo no ERP via navegador."
+requires-python = ">=3.11"
+dependencies = [
+  "playwright>=1.46,<2",
+  "python-dotenv>=1.0,<2",
+  "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+rpa-ponto = "rpa_ponto.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

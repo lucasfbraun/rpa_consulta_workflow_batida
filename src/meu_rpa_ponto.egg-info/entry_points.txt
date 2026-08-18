@@ -1,0 +1,2 @@
+[console_scripts]
+rpa-ponto = rpa_ponto.cli:main

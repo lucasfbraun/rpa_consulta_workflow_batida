@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: meu-rpa-ponto
+Version: 0.1.0
+Summary: Coleta registros de ponto e importa o arquivo no ERP via navegador.
+Requires-Python: >=3.11
+Requires-Dist: playwright<2,>=1.46
+Requires-Dist: python-dotenv<2,>=1.0
+Requires-Dist: requests<3,>=2.32
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8; extra == "dev"

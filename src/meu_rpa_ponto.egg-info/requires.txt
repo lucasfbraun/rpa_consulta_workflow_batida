@@ -1,0 +1,6 @@
+playwright<2,>=1.46
+python-dotenv<2,>=1.0
+requests<3,>=2.32
+
+[dev]
+pytest<9,>=8
