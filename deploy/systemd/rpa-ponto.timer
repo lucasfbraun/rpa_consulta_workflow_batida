@@ -1,0 +1,11 @@
+[Unit]
+Description=Executa diariamente o RPA de ponto
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=rpa-ponto.service
+
+[Install]
+WantedBy=timers.target
+

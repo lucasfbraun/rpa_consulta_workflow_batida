@@ -1,0 +1,17 @@
+[Unit]
+Description=RPA de importação do ponto no ERP
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=rpa-ponto
+Group=rpa-ponto
+WorkingDirectory=/opt/rpa-ponto
+Environment=HOME=/home/rpa-ponto
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/rpa-ponto/.venv/bin/rpa-ponto run
+TimeoutStartSec=30min
+UMask=0077
+NoNewPrivileges=true
+
