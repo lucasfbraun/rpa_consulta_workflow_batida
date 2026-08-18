@@ -30,7 +30,10 @@ def import_into_erp(
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=settings.headless)
-        context = browser.new_context(ignore_https_errors=not settings.erp_verify_tls)
+        context = browser.new_context(
+            ignore_https_errors=not settings.erp_verify_tls,
+            locale=settings.erp_locale,
+        )
         try:
             page = context.new_page()
             page.set_default_timeout(20_000)
@@ -94,14 +97,20 @@ def _login(
     if not settings.erp_username or not settings.erp_password:
         raise ValueError("Preencha ERP_USERNAME e ERP_PASSWORD no .env.")
 
-    user = page.get_by_role("textbox", name="Usuário")
-    password = page.get_by_role("textbox", name="Senha")
+    user = page.get_by_role(
+        "textbox", name=re.compile(r"^(Usuário|User)$", re.IGNORECASE)
+    )
+    password = page.get_by_role(
+        "textbox", name=re.compile(r"^(Senha|Password)$", re.IGNORECASE)
+    )
     expect(user).to_be_visible()
     user.fill(settings.erp_username)
     _pause_after(page, settings, "preencher_usuario", reporter)
     password.fill(settings.erp_password)
     _pause_after(page, settings, "preencher_senha", reporter)
-    page.get_by_role("button", name="Acessar").click()
+    page.get_by_role(
+        "button", name=re.compile(r"^(Acessar|Access)$", re.IGNORECASE)
+    ).click()
     _pause_after(page, settings, "clicar_acessar", reporter)
 
     home_heading = page.get_by_role("heading", name=re.compile(r"Olá,", re.IGNORECASE))

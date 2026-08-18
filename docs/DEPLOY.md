@@ -188,6 +188,7 @@ PONTO_API_URL=https://relogio-ponto.lucasfbraun.workers.dev/api/records/afd
 ERP_URL=
 ERP_USERNAME=
 ERP_PASSWORD=
+ERP_LOCALE=pt-BR
 
 RPA_HEADLESS=true
 MONITOR_ENABLED=true
@@ -203,6 +204,10 @@ CLOUDFLARE_API_TOKEN=
 Use `RPA_HEADLESS=false` somente quando precisar enxergar o navegador para testar
 ou diagnosticar o fluxo. Em produção, `true` permite executar apenas pelo terminal
 ou por um agendador.
+
+Mantenha `ERP_LOCALE=pt-BR`. O contexto do Chromium passa esse idioma ao ERP e
+evita que uma instalação Linux em inglês altere os nomes dos campos e botões
+usados pela automação.
 
 O `.env` contém credenciais, está ignorado pelo Git e não deve ser publicado.
 Consulte `.env.example` para todas as opções disponíveis.

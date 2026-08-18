@@ -41,6 +41,7 @@ class Settings:
     erp_password: str | None
     erp_program_code: str
     erp_import_kind: str
+    erp_locale: str
     erp_close_active_sessions: bool
     erp_verify_tls: bool
     headless: bool
@@ -122,6 +123,7 @@ class Settings:
             erp_password=os.getenv("ERP_PASSWORD") or None,
             erp_program_code=os.getenv("ERP_PROGRAM_CODE", "CCRHP055"),
             erp_import_kind=os.getenv("ERP_IMPORT_KIND", "Apuração"),
+            erp_locale=os.getenv("ERP_LOCALE", "pt-BR").strip() or "pt-BR",
             erp_close_active_sessions=_as_bool(
                 os.getenv("ERP_CLOSE_ACTIVE_SESSIONS"), default=False
             ),

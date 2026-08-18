@@ -126,6 +126,8 @@ do `.env`.
 
 O fluxo capturado abre o módulo `CCRHP055` e seleciona o tipo `Apuração`. Esses
 valores podem ser alterados por `ERP_PROGRAM_CODE` e `ERP_IMPORT_KIND` no `.env`.
+`ERP_LOCALE=pt-BR` mantém a interface automatizada em português mesmo quando o
+Linux estiver configurado em inglês.
 O RPA não encerra uma sessão já ativa por padrão. Para uma conta exclusiva da
 automação, `ERP_CLOSE_ACTIVE_SESSIONS=true` permite recuperar automaticamente uma
 sessão deixada por uma execução interrompida.
