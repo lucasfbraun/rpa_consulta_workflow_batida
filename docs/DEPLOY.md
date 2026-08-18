@@ -103,6 +103,19 @@ O instalador não preenche credenciais, não executa a importação e não ativa
 timer. Ao terminar, siga os quatro comandos exibidos por ele. Isso evita que um
 servidor recém-criado acesse o ERP com configurações incompletas.
 
+O teste final é executado dentro de `/opt/rpa-ponto`, já com o usuário do
+serviço. Se uma instalação feita com uma versão anterior terminar somente nessa
+etapa com `PermissionError` apontando para a pasta do usuário que fez o clone,
+os componentes já estarão instalados. Valide novamente a partir da pasta certa:
+
+```bash
+cd /opt/rpa-ponto
+sudo -u rpa-ponto -H .venv/bin/python -m pytest
+```
+
+Com os testes aprovados, prossiga para a configuração do `.env`; não é
+necessário reinstalar o sistema.
+
 Para uma instalação existente, o código e o `.env` são preservados. O instalador
 não executa `git pull`; atualize o código conforme a seção 9 e rode novamente o
 script se quiser reconciliar todas as dependências.

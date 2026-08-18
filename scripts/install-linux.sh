@@ -141,6 +141,10 @@ as_rpa() {
     "$@"
 }
 
+as_rpa_in_project() {
+  as_rpa bash -c 'cd "$1" && shift && exec "$@"' bash "$RPA_INSTALL_DIR" "$@"
+}
+
 log "Preparando o código em $RPA_INSTALL_DIR"
 if [[ -d "$RPA_INSTALL_DIR/.git" ]]; then
   as_rpa test -w "$RPA_INSTALL_DIR" || fail "$RPA_USER não possui escrita em $RPA_INSTALL_DIR"
@@ -204,7 +208,7 @@ systemd-analyze verify /etc/systemd/system/rpa-ponto.service /etc/systemd/system
 systemctl daemon-reload
 
 log "Executando os testes automatizados"
-as_rpa "$RPA_INSTALL_DIR/.venv/bin/python" -m pytest "$RPA_INSTALL_DIR/tests"
+as_rpa_in_project "$RPA_INSTALL_DIR/.venv/bin/python" -m pytest tests
 
 printf '\nInstalação concluída.\n'
 printf 'Python: %s\n' "$("$RPA_INSTALL_DIR/.venv/bin/python" --version 2>&1)"
