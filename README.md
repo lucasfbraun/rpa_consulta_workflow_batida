@@ -118,6 +118,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 python -m playwright install --with-deps chromium
+npm ci
 cp .env.example .env
 ```
 
@@ -126,6 +127,10 @@ mesma rede, VPN ou rota que alcança o ERP.
 
 Antes de ativar o modo headless, valide uma importação com
 `RPA_HEADLESS=false`. Depois, altere para `true` e execute novamente.
+
+O checklist completo para instalar em outro Windows ou Linux, preservar o
+sequencial AFD, autenticar a Cloudflare e validar o ambiente está em
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Relatório local e screenshots
 
@@ -148,3 +153,36 @@ Para reconstruir o HTML sem executar o ERP:
 ```powershell
 rpa-ponto report
 ```
+
+## Publicar o relatório na Cloudflare
+
+O relatório completo, incluindo os screenshots, pode ser publicado como um site
+público no Cloudflare Pages. Instale o Wrangler e autentique esta máquina uma vez:
+
+```powershell
+npm install
+npx.cmd wrangler login
+npx.cmd wrangler pages project create rpa-ponto-monitor --production-branch main
+```
+
+Esse comando de criação é necessário somente na primeira configuração da conta.
+O projeto `rpa-ponto-monitor` já foi criado; em outra máquina, execute apenas
+`npm ci` e `wrangler login`. Depois, configure o `.env`:
+
+```dotenv
+CLOUDFLARE_PAGES_ENABLED=true
+CLOUDFLARE_PAGES_PROJECT=rpa-ponto-monitor
+CLOUDFLARE_PAGES_BRANCH=main
+```
+
+A partir daí, `rpa-ponto run` publica `output/monitor` automaticamente ao final,
+tanto em execuções concluídas quanto nas falhas capturadas. Para publicar somente
+o relatório que já existe, sem executar o ERP:
+
+```powershell
+rpa-ponto publish
+```
+
+No Linux, use `npx wrangler` no lugar de `npx.cmd wrangler`. Para uma execução
+sem login interativo, defina `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` no
+ambiente do processo, usando um token com permissão para editar o Pages.

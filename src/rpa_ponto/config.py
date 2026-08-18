@@ -48,6 +48,9 @@ class Settings:
     monitor_enabled: bool
     monitor_output_dir: Path
     monitor_keep_runs: int
+    cloudflare_pages_enabled: bool
+    cloudflare_pages_project: str | None
+    cloudflare_pages_branch: str
 
     @classmethod
     def from_env(cls, env_file: Path | None = None) -> "Settings":
@@ -92,6 +95,22 @@ class Settings:
         if monitor_keep_runs < 1:
             raise ValueError("MONITOR_KEEP_RUNS deve ser pelo menos 1.")
 
+        cloudflare_pages_enabled = _as_bool(
+            os.getenv("CLOUDFLARE_PAGES_ENABLED"), default=False
+        )
+        cloudflare_pages_project = (
+            os.getenv("CLOUDFLARE_PAGES_PROJECT", "").strip() or None
+        )
+        if cloudflare_pages_enabled and not cloudflare_pages_project:
+            raise ValueError(
+                "Preencha CLOUDFLARE_PAGES_PROJECT quando a publicação estiver ativa."
+            )
+        cloudflare_pages_branch = os.getenv(
+            "CLOUDFLARE_PAGES_BRANCH", "main"
+        ).strip()
+        if not cloudflare_pages_branch:
+            raise ValueError("CLOUDFLARE_PAGES_BRANCH não pode ficar vazia.")
+
         return cls(
             ponto_api_url=os.environ["PONTO_API_URL"],
             ponto_username=os.environ["PONTO_USERNAME"],
@@ -112,4 +131,7 @@ class Settings:
             monitor_enabled=monitor_enabled,
             monitor_output_dir=monitor_output_dir,
             monitor_keep_runs=monitor_keep_runs,
+            cloudflare_pages_enabled=cloudflare_pages_enabled,
+            cloudflare_pages_project=cloudflare_pages_project,
+            cloudflare_pages_branch=cloudflare_pages_branch,
         )

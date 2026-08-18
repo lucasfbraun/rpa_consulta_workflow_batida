@@ -1,0 +1,40 @@
+from pathlib import Path
+
+import pytest
+
+from rpa_ponto.cloudflare import CloudflarePublishError, publish_monitor
+
+
+def test_publish_monitor_invokes_local_wrangler(tmp_path: Path, monkeypatch):
+    monitor = tmp_path / "output" / "monitor"
+    monitor.mkdir(parents=True)
+    (monitor / "index.html").write_text("relatorio", encoding="utf-8")
+    bin_dir = tmp_path / "node_modules" / ".bin"
+    bin_dir.mkdir(parents=True)
+    executable = bin_dir / "wrangler.cmd"
+    executable.write_text("", encoding="utf-8")
+
+    class Result:
+        returncode = 0
+        stdout = "Deployment complete: https://abc.rpa-ponto.pages.dev"
+        stderr = ""
+
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        return Result()
+
+    monkeypatch.setattr("rpa_ponto.cloudflare.subprocess.run", fake_run)
+    monkeypatch.setattr("rpa_ponto.cloudflare.os.name", "nt")
+
+    url = publish_monitor(monitor, "rpa-ponto", project_root=tmp_path)
+
+    assert url == "https://abc.rpa-ponto.pages.dev"
+    assert captured["command"][1:3] == ["pages", "deploy"]
+    assert "--project-name" in captured["command"]
+
+
+def test_publish_monitor_requires_report(tmp_path: Path):
+    with pytest.raises(CloudflarePublishError, match="Relatório não encontrado"):
+        publish_monitor(tmp_path / "monitor", "rpa-ponto", project_root=tmp_path)

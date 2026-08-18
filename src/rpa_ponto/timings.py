@@ -29,10 +29,10 @@ ACTION_DELAYS_MS: dict[str, int | None] = {
     "selecionar_arquivo": 2000,
     "validar_arquivo": 5000,
     "fechar_validacao": 10000,
-    "abrir_tipo_importacao": 10000,
-    "selecionar_tipo_importacao": 10000,
+    "abrir_tipo_importacao": 3000,
+    "selecionar_tipo_importacao": 3000,
     "processar_importacao": 10000,
-    "fechar_resultado": None,
+    "fechar_resultado": 300,
     # Logout
     "clicar_logout": 2000,
     "confirmar_logout": 2000,

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from .api import PontoApiError, fetch_afd
+from .cloudflare import CloudflarePublishError, publish_monitor
 from .config import Settings
 from .converter import LayoutPendenteError, generate_import_file
 from .erp import ErpAutomationError, import_into_erp
@@ -16,7 +17,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Automação de ponto para o ERP")
     parser.add_argument(
         "command",
-        choices=("fetch", "import", "run", "report"),
+        choices=("fetch", "import", "run", "report", "publish"),
         help="Etapa a executar",
     )
     parser.add_argument("--file", type=Path, help="Arquivo existente para importar")
@@ -29,9 +30,11 @@ def main() -> int:
     reporter: ExecutionReporter | None = None
     try:
         settings = Settings.from_env()
-        if args.command == "report":
+        if args.command in {"report", "publish"}:
             report = rebuild_report(settings.monitor_output_dir)
             print(f"Relatório HTML: {report.resolve()}")
+            if args.command == "publish":
+                _publish(settings, force=True)
             return 0
         reporter = ExecutionReporter.from_settings(settings, args.command)
         reporter.start()
@@ -61,7 +64,16 @@ def main() -> int:
             import_into_erp(settings, import_file, reporter)
             print(f"Importação concluída no ERP: {import_file.resolve()}")
         reporter.finish("completed")
+        _publish(settings)
         return 0
+    except CloudflarePublishError as exc:
+        if reporter:
+            reporter.step(
+                "falha_publicacao_cloudflare", status="failed", message=str(exc)
+            )
+            reporter.finish("failed", str(exc))
+        print(f"Erro: {exc}", file=sys.stderr)
+        return 1
     except (
         ValueError,
         FileNotFoundError,
@@ -70,9 +82,47 @@ def main() -> int:
         ErpAutomationError,
     ) as exc:
         if reporter:
+            reporter.step("falha_execucao", status="failed", message=str(exc))
             reporter.finish("failed", str(exc))
+            _publish_after_failure(settings)
         print(f"Erro: {exc}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        message = "Execução interrompida pelo usuário."
+        if reporter:
+            reporter.step("falha_execucao", status="failed", message=message)
+            reporter.finish("failed", message)
+            _publish_after_failure(settings)
+        print(f"Erro: {message}", file=sys.stderr)
+        return 130
+    except Exception as exc:
+        message = f"Falha inesperada: {exc.__class__.__name__}: {exc}"
+        if reporter:
+            reporter.step("falha_execucao", status="failed", message=message)
+            reporter.finish("failed", message)
+            _publish_after_failure(settings)
+        print(f"Erro: {message}", file=sys.stderr)
+    return 1
+
+
+def _publish(settings: Settings, *, force: bool = False) -> None:
+    if not force and not settings.cloudflare_pages_enabled:
+        return
+    if not settings.cloudflare_pages_project:
+        raise CloudflarePublishError("Preencha CLOUDFLARE_PAGES_PROJECT no .env.")
+    url = publish_monitor(
+        settings.monitor_output_dir,
+        settings.cloudflare_pages_project,
+        settings.cloudflare_pages_branch,
+    )
+    print(f"Relatório online: {url or 'publicado com sucesso'}")
+
+
+def _publish_after_failure(settings: Settings) -> None:
+    try:
+        _publish(settings)
+    except CloudflarePublishError as exc:
+        print(f"Aviso: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import json
 import re
 import shutil
@@ -60,6 +61,7 @@ class ExecutionReporter:
             "error": None,
             "steps": [],
         }
+        atexit.register(self._finish_if_running)
         self._save()
         print(f"Monitoramento local: execução {self.run_id}")
 
@@ -115,6 +117,13 @@ class ExecutionReporter:
         self._save()
         if self.root:
             print(f"Relatório HTML: {(self.root / 'index.html').resolve()}")
+
+    def _finish_if_running(self) -> None:
+        if self.data.get("status") != "running":
+            return
+        message = "O processo foi encerrado antes de finalizar o fluxo."
+        self.step("falha_execucao", status="failed", message=message)
+        self.finish("failed", message)
 
     def _save(self) -> None:
         if self.run_dir is None or self.root is None:

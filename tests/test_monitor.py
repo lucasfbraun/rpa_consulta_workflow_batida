@@ -36,3 +36,26 @@ def test_retention_removes_old_monitor_run_but_not_afd(tmp_path: Path):
     assert not (tmp_path / "monitor" / "runs" / first_id).exists()
     assert (tmp_path / "monitor" / "runs" / second.run_id).is_dir()
     assert afd.is_file()
+
+
+def test_failure_is_visible_in_report(tmp_path: Path):
+    reporter = ExecutionReporter(tmp_path, "run")
+    reporter.start()
+    reporter.step("falha_execucao", status="failed", message="Credencial recusada")
+    reporter.finish("failed", "Credencial recusada")
+
+    run = json.loads((reporter.run_dir / "run.json").read_text(encoding="utf-8"))
+    html = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert run["status"] == "failed"
+    assert run["steps"][-1]["status"] == "failed"
+    assert "Credencial recusada" in html
+
+
+def test_unfinished_run_is_marked_failed_on_shutdown(tmp_path: Path):
+    reporter = ExecutionReporter(tmp_path, "run")
+    reporter.start()
+    reporter._finish_if_running()
+
+    run = json.loads((reporter.run_dir / "run.json").read_text(encoding="utf-8"))
+    assert run["status"] == "failed"
+    assert run["steps"][-1]["name"] == "falha_execucao"
