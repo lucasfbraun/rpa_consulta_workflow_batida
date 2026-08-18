@@ -35,6 +35,7 @@ class Settings:
     ponto_username: str
     ponto_password: str
     afd_initial_sequence: str
+    afd_keep_files: int
     erp_url: str
     erp_username: str | None
     erp_password: str | None
@@ -44,6 +45,9 @@ class Settings:
     erp_verify_tls: bool
     headless: bool
     global_delay_ms: int
+    monitor_enabled: bool
+    monitor_output_dir: Path
+    monitor_keep_runs: int
 
     @classmethod
     def from_env(cls, env_file: Path | None = None) -> "Settings":
@@ -59,6 +63,12 @@ class Settings:
         ).strip()
         if not afd_initial_sequence.isdigit():
             raise ValueError("AFD_INITIAL_SEQUENCE deve conter somente números.")
+        try:
+            afd_keep_files = int(os.getenv("AFD_KEEP_FILES", "1"))
+        except ValueError as exc:
+            raise ValueError("AFD_KEEP_FILES deve ser um número inteiro.") from exc
+        if afd_keep_files < 1:
+            raise ValueError("AFD_KEEP_FILES deve ser pelo menos 1.")
 
         legacy_global_delay = os.getenv("RPA_STEP_DELAY_MS")
         try:
@@ -71,11 +81,23 @@ class Settings:
             "RPA_GLOBAL_DELAY_MS", default=global_delay_default
         )
 
+        monitor_enabled = _as_bool(os.getenv("MONITOR_ENABLED"), default=False)
+        monitor_output_dir = Path(
+            os.getenv("MONITOR_OUTPUT_DIR", "output/monitor")
+        )
+        try:
+            monitor_keep_runs = int(os.getenv("MONITOR_KEEP_RUNS", "1"))
+        except ValueError as exc:
+            raise ValueError("MONITOR_KEEP_RUNS deve ser um número inteiro.") from exc
+        if monitor_keep_runs < 1:
+            raise ValueError("MONITOR_KEEP_RUNS deve ser pelo menos 1.")
+
         return cls(
             ponto_api_url=os.environ["PONTO_API_URL"],
             ponto_username=os.environ["PONTO_USERNAME"],
             ponto_password=os.environ["PONTO_PASSWORD"],
             afd_initial_sequence=afd_initial_sequence,
+            afd_keep_files=afd_keep_files,
             erp_url=os.environ["ERP_URL"],
             erp_username=os.getenv("ERP_USERNAME") or None,
             erp_password=os.getenv("ERP_PASSWORD") or None,
@@ -87,4 +109,7 @@ class Settings:
             erp_verify_tls=_as_bool(os.getenv("ERP_VERIFY_TLS"), default=True),
             headless=_as_bool(os.getenv("RPA_HEADLESS"), default=True),
             global_delay_ms=global_delay_ms,
+            monitor_enabled=monitor_enabled,
+            monitor_output_dir=monitor_output_dir,
+            monitor_keep_runs=monitor_keep_runs,
         )

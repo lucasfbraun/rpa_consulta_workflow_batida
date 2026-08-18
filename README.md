@@ -9,6 +9,33 @@ O projeto tem três etapas independentes:
 A separação permite desenvolver no Windows e executar depois no Linux sem alterar
 o fluxo da automação.
 
+## Uso diário no Windows
+
+Abra o PowerShell na pasta do projeto e execute o fluxo completo:
+
+```powershell
+cd C:\meu_rpa
+.\.venv\Scripts\rpa-ponto.exe run
+```
+
+Esse único comando consulta a API, gera o próximo AFD, mantém somente o AFD mais
+recente, abre o ERP, processa o arquivo, faz logout e atualiza o relatório com os
+screenshots de cada etapa.
+
+O relatório pode ser aberto em:
+
+```text
+C:\meu_rpa\output\monitor\index.html
+```
+
+Para executar apenas partes do processo, use:
+
+```powershell
+.\.venv\Scripts\rpa-ponto.exe fetch
+.\.venv\Scripts\rpa-ponto.exe import --file .\output\AFD_SEQUENCIAL.txt
+.\.venv\Scripts\rpa-ponto.exe report
+```
+
 ## Preparação no Windows
 
 Requer Python 3.11 ou mais recente.
@@ -28,6 +55,10 @@ Por padrão, os arquivos são numerados a partir do modelo informado. O primeiro
 será `AFD00014003750288104.txt`; cada nova execução usa o maior sequencial já
 existente em `output` mais um. Para trocar a base, altere
 `AFD_INITIAL_SEQUENCE` no `.env`.
+
+`AFD_KEEP_FILES=1` mantém somente o AFD de maior sequencial dentro de `output`.
+A limpeza ocorre depois que o novo arquivo foi gerado com sucesso e não afeta o
+arquivo-modelo guardado na raiz do projeto.
 
 ## Comandos
 
@@ -95,3 +126,25 @@ mesma rede, VPN ou rota que alcança o ERP.
 
 Antes de ativar o modo headless, valide uma importação com
 `RPA_HEADLESS=false`. Depois, altere para `true` e execute novamente.
+
+## Relatório local e screenshots
+
+Com `MONITOR_ENABLED=true`, cada execução atualiza automaticamente:
+
+```text
+output/monitor/index.html
+```
+
+Abra esse HTML no navegador para consultar o histórico, a linha do tempo e um
+screenshot de cada ação. As imagens e os dados ficam apenas na máquina local em
+`output/monitor/runs`. Use `MONITOR_OUTPUT_DIR` para trocar a pasta.
+
+`MONITOR_KEEP_RUNS=1` mantém somente a execução mais recente do monitor e apaga
+automaticamente screenshots/JSON anteriores. Essa limpeza nunca remove os
+arquivos `output/AFD*.txt`. Aumente o valor se quiser manter mais execuções.
+
+Para reconstruir o HTML sem executar o ERP:
+
+```powershell
+rpa-ponto report
+```
