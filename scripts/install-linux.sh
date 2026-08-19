@@ -191,6 +191,8 @@ install -d -o "$RPA_USER" -g "$RPA_GROUP" -m 700 "$RPA_INSTALL_DIR/output"
 log "Instalando as unidades do systemd, ainda desativadas"
 [[ -f "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto.service" ]] || fail "unidade systemd do serviço não encontrada"
 [[ -f "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto.timer" ]] || fail "unidade systemd do timer não encontrada"
+[[ -f "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto-control.service" ]] || fail "unidade systemd do controle não encontrada"
+[[ -f "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto-control.timer" ]] || fail "timer do controle não encontrado"
 if [[ -z "$TEMP_DIR" ]]; then
   TEMP_DIR="$(mktemp -d)"
 fi
@@ -199,12 +201,22 @@ sed \
   -e "s|^Group=rpa-ponto$|Group=$RPA_GROUP|" \
   -e "s|^WorkingDirectory=/opt/rpa-ponto$|WorkingDirectory=$RPA_INSTALL_DIR|" \
   -e "s|^Environment=HOME=/home/rpa-ponto$|Environment=HOME=$RPA_HOME|" \
-  -e "s|^ExecStart=/opt/rpa-ponto/|ExecStart=$RPA_INSTALL_DIR/|" \
+  -e "s|/opt/rpa-ponto|$RPA_INSTALL_DIR|g" \
   "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto.service" \
   > "$TEMP_DIR/rpa-ponto.service"
+sed \
+  -e "s|^User=rpa-ponto$|User=$RPA_USER|" \
+  -e "s|^Group=rpa-ponto$|Group=$RPA_GROUP|" \
+  -e "s|^WorkingDirectory=/opt/rpa-ponto$|WorkingDirectory=$RPA_INSTALL_DIR|" \
+  -e "s|^Environment=HOME=/home/rpa-ponto$|Environment=HOME=$RPA_HOME|" \
+  -e "s|/opt/rpa-ponto|$RPA_INSTALL_DIR|g" \
+  "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto-control.service" \
+  > "$TEMP_DIR/rpa-ponto-control.service"
 install -m 644 "$TEMP_DIR/rpa-ponto.service" /etc/systemd/system/rpa-ponto.service
+install -m 644 "$TEMP_DIR/rpa-ponto-control.service" /etc/systemd/system/rpa-ponto-control.service
 install -m 644 "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto.timer" /etc/systemd/system/rpa-ponto.timer
-systemd-analyze verify /etc/systemd/system/rpa-ponto.service /etc/systemd/system/rpa-ponto.timer
+install -m 644 "$RPA_INSTALL_DIR/deploy/systemd/rpa-ponto-control.timer" /etc/systemd/system/rpa-ponto-control.timer
+systemd-analyze verify /etc/systemd/system/rpa-ponto.service /etc/systemd/system/rpa-ponto.timer /etc/systemd/system/rpa-ponto-control.service /etc/systemd/system/rpa-ponto-control.timer
 systemctl daemon-reload
 
 log "Executando os testes automatizados"
@@ -223,4 +235,4 @@ else
 fi
 printf '2. Teste o fluxo: sudo systemctl start rpa-ponto.service\n'
 printf '3. Confira o resultado: sudo systemctl status rpa-ponto.service\n'
-printf '4. Ative o agendamento: sudo systemctl enable --now rpa-ponto.timer\n'
+printf '4. Após configurar o controle, ative: sudo systemctl enable --now rpa-ponto-control.timer\n'

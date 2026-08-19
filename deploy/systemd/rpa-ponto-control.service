@@ -1,5 +1,5 @@
 [Unit]
-Description=RPA de importação do ponto no ERP
+Description=Consulta comandos e agendamentos do painel do RPA
 Wants=network-online.target
 After=network-online.target
 
@@ -10,7 +10,7 @@ Group=rpa-ponto
 WorkingDirectory=/opt/rpa-ponto
 Environment=HOME=/home/rpa-ponto
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/flock -n /opt/rpa-ponto/output/.run.lock /opt/rpa-ponto/.venv/bin/rpa-ponto run
-TimeoutStartSec=30min
+ExecStart=/usr/bin/flock -n /opt/rpa-ponto/output/.run.lock /opt/rpa-ponto/.venv/bin/rpa-ponto dispatch
+TimeoutStartSec=35min
 UMask=0077
 NoNewPrivileges=true

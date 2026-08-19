@@ -182,9 +182,56 @@ def rebuild_report(root: Path, history_days: int = 3) -> Path:
 
 def _render_html(runs: list[dict], history_days: int = 3) -> str:
     payload = json.dumps(runs, ensure_ascii=False).replace("</", "<\\/")
-    return _HTML.replace("__RPA_DATA__", payload).replace(
-        "__HISTORY_DAYS__", str(history_days)
+    rendered = (
+        _HTML.replace("__RPA_DATA__", payload)
+        .replace("__HISTORY_DAYS__", str(history_days))
     )
+    return (
+        rendered.replace("</style>", _CONTROL_STYLE + "</style>", 1)
+        .replace("<main>", "<main>" + _CONTROL_HTML, 1)
+        .replace("draw();</script>", _CONTROL_SCRIPT + "draw();</script>", 1)
+    )
+
+
+_CONTROL_STYLE = r'''
+.control{display:grid;grid-template-columns:minmax(250px,.7fr) 1.3fr;gap:14px;margin-bottom:18px}.control>.card{padding:20px}.control h2,.control h3{margin-top:0}.primary{border:0;border-radius:10px;background:var(--green);color:#052019;font-weight:800;padding:11px 16px}.primary:disabled{opacity:.5;cursor:wait}.pending{color:#9ed6ff;background:#19374b}.schedule-form{display:grid;grid-template-columns:1fr 120px;gap:10px}.schedule-form input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}.days{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.days label{padding:6px 8px;border:1px solid var(--line);border-radius:8px}.days input{width:auto}.schedule-form button{grid-column:1/-1}.schedule-item,.command-item{border-top:1px solid var(--line);padding:10px 0}.schedule-actions{display:flex;gap:7px}.small{padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)}.danger{color:var(--red)}.control-message{min-height:22px;margin:8px 0}.control-list{max-height:235px;overflow:auto}@media(max-width:800px){.control{grid-template-columns:1fr}.schedule-form{grid-template-columns:1fr 110px}}
+'''
+
+_CONTROL_HTML = r'''
+<section class="control">
+  <article class="card">
+    <p class="eyebrow">CONTROLE REMOTO</p><h2>Executar fluxo</h2>
+    <p class="muted">O pedido entra na fila e o agente do Lightsail inicia o fluxo em até um minuto.</p>
+    <button class="primary" id="runNow" type="button">Executar agora</button>
+    <p class="control-message muted" id="controlMessage" role="status"></p>
+    <p class="meta" id="agentStatus">Consultando agente…</p>
+    <h3>Pedidos recentes</h3><div class="control-list" id="commands"></div>
+  </article>
+  <article class="card">
+    <p class="eyebrow">AMERICA/SAO_PAULO</p><h2>Agendamentos</h2>
+    <form class="schedule-form" id="scheduleForm">
+      <input id="scheduleName" maxlength="60" placeholder="Nome (ex.: Fechamento diário)" required>
+      <input id="scheduleTime" type="time" required>
+      <fieldset class="days"><legend>Dias da semana</legend>
+        <label><input type="checkbox" name="weekday" value="1" checked> Seg</label><label><input type="checkbox" name="weekday" value="2" checked> Ter</label><label><input type="checkbox" name="weekday" value="3" checked> Qua</label><label><input type="checkbox" name="weekday" value="4" checked> Qui</label><label><input type="checkbox" name="weekday" value="5" checked> Sex</label><label><input type="checkbox" name="weekday" value="6"> Sáb</label><label><input type="checkbox" name="weekday" value="0"> Dom</label>
+      </fieldset>
+      <button class="primary" type="submit">Adicionar agendamento</button>
+    </form>
+    <div class="control-list" id="schedules"></div>
+  </article>
+</section>
+'''
+
+_CONTROL_SCRIPT = r'''
+const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];const controlLabel=v=>({pending:'Na fila',running:'Em andamento',completed:'Concluída',failed:'Falhou'}[v]||v);
+async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});let data={};try{data=await response.json()}catch{}if(!response.ok)throw new Error(data.error||`Erro HTTP ${response.status}`);return data}
+function drawControl(data){agentStatus.textContent=data.agent_last_seen?`Agente visto em ${fmt(data.agent_last_seen)}`:'Agente ainda não conectado';schedules.innerHTML=data.schedules.map(s=>`<div class="schedule-item"><div class="row"><div><strong>${esc(s.name)}</strong><div class="meta">${esc(s.time)} · ${s.weekdays.map(d=>dayNames[d]).join(', ')}</div></div><div class="schedule-actions"><button class="small toggle-schedule" data-id="${s.id}" data-enabled="${s.enabled}">${s.enabled?'Pausar':'Ativar'}</button><button class="small danger delete-schedule" data-id="${s.id}">Excluir</button></div></div></div>`).join('')||'<p class="muted">Nenhum agendamento.</p>';commands.innerHTML=data.commands.map(c=>`<div class="command-item"><div class="row"><strong>${c.source==='manual'?'Manual':'Agendado'}</strong><span class="badge ${c.status}">${controlLabel(c.status)}</span></div><div class="meta">${fmt(c.requested_at)}${c.result?' · '+esc(c.result):''}</div></div>`).join('')||'<p class="muted">Nenhum pedido.</p>';document.querySelectorAll('.toggle-schedule').forEach(b=>b.onclick=()=>mutate(`/api/control/schedules/${b.dataset.id}`,{method:'PATCH',body:JSON.stringify({enabled:b.dataset.enabled!=='true'})}));document.querySelectorAll('.delete-schedule').forEach(b=>b.onclick=()=>{if(confirm('Excluir este agendamento?'))mutate(`/api/control/schedules/${b.dataset.id}`,{method:'DELETE'})})}
+async function loadControl(){try{drawControl(await api('/api/control'))}catch(error){controlMessage.textContent=error.message}}
+async function mutate(path,options){controlMessage.textContent='Salvando…';try{await api(path,options);controlMessage.textContent='Atualizado com sucesso.';await loadControl()}catch(error){controlMessage.textContent=error.message}}
+runNow.onclick=async()=>{runNow.disabled=true;await mutate('/api/control/run',{method:'POST',body:'{}'});runNow.disabled=false};
+scheduleForm.onsubmit=async event=>{event.preventDefault();const weekdays=[...document.querySelectorAll('[name=weekday]:checked')].map(i=>Number(i.value));if(!weekdays.length){controlMessage.textContent='Selecione pelo menos um dia.';return}await mutate('/api/control/schedules',{method:'POST',body:JSON.stringify({name:scheduleName.value,time:scheduleTime.value,weekdays})});scheduleName.value=''};
+loadControl();setInterval(loadControl,30000);
+'''
 
 
 _HTML = r'''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07110f"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg"><title>Monitor do RPA</title><style>

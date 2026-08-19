@@ -34,6 +34,7 @@ def publish_monitor(
     project_root: Path | None = None,
     auth_username: str | None = None,
     auth_password: str | None = None,
+    agent_token: str | None = None,
 ) -> str | None:
     root = (project_root or Path.cwd()).resolve()
     source = output_dir.resolve()
@@ -44,7 +45,9 @@ def publish_monitor(
 
     wrangler = _wrangler_executable(root)
     if auth_username and auth_password:
-        _sync_auth_secrets(wrangler, root, project_name, auth_username, auth_password)
+        _sync_auth_secrets(
+            wrangler, root, project_name, auth_username, auth_password, agent_token
+        )
 
     command = [
         wrangler,
@@ -88,13 +91,17 @@ def _sync_auth_secrets(
     project_name: str,
     username: str,
     password: str,
+    agent_token: str | None = None,
 ) -> None:
     secret_file: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", encoding="utf-8", delete=False
         ) as handle:
-            json.dump({"PONTO_USERNAME": username, "PONTO_PASSWORD": password}, handle)
+            secrets = {"PONTO_USERNAME": username, "PONTO_PASSWORD": password}
+            if agent_token:
+                secrets["CONTROL_AGENT_TOKEN"] = agent_token
+            json.dump(secrets, handle)
             secret_file = Path(handle.name)
         result = subprocess.run(
             [

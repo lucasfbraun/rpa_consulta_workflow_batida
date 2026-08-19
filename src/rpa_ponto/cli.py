@@ -8,6 +8,7 @@ from .api import PontoApiError, fetch_afd
 from .cloudflare import CloudflarePublishError, publish_monitor
 from .config import Settings
 from .converter import LayoutPendenteError, generate_import_file
+from .control import ControlError, dispatch_once
 from .erp import ErpAutomationError, import_into_erp
 from .filename import AFD_PATTERN, next_afd_path, prune_afd_files
 from .monitor import ExecutionReporter, rebuild_report
@@ -17,7 +18,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Automação de ponto para o ERP")
     parser.add_argument(
         "command",
-        choices=("fetch", "import", "run", "report", "publish"),
+        choices=("fetch", "import", "run", "report", "publish", "dispatch"),
         help="Etapa a executar",
     )
     parser.add_argument("--file", type=Path, help="Arquivo existente para importar")
@@ -30,6 +31,8 @@ def main() -> int:
     reporter: ExecutionReporter | None = None
     try:
         settings = Settings.from_env()
+        if args.command == "dispatch":
+            return dispatch_once(settings)
         if args.command in {"report", "publish"}:
             report = rebuild_report(
                 settings.monitor_output_dir, settings.monitor_history_days
@@ -82,6 +85,7 @@ def main() -> int:
         PontoApiError,
         LayoutPendenteError,
         ErpAutomationError,
+        ControlError,
     ) as exc:
         if reporter:
             reporter.step("falha_execucao", status="failed", message=str(exc))
@@ -118,6 +122,7 @@ def _publish(settings: Settings, *, force: bool = False) -> None:
         settings.cloudflare_pages_branch,
         auth_username=settings.ponto_username,
         auth_password=settings.ponto_password,
+        agent_token=settings.control_agent_token,
     )
     print(f"Relatório online: {url or 'publicado com sucesso'}")
 

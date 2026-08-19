@@ -2,5 +2,13 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "rpa-ponto-monitor",
   "pages_build_output_dir": "./output/monitor",
-  "compatibility_date": "2026-08-19"
+  "compatibility_date": "2026-08-19",
+  "d1_databases": [
+    {
+      "binding": "CONTROL_DB",
+      "database_name": "rpa-ponto-control",
+      "database_id": "3502ea30-28b3-40a1-b51a-d0a64a4c0bff",
+      "migrations_dir": "./migrations"
+    }
+  ]
 }

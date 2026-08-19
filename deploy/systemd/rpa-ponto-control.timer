@@ -1,0 +1,12 @@
+[Unit]
+Description=Consulta o painel do RPA a cada minuto
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+Unit=rpa-ponto-control.service
+
+[Install]
+WantedBy=timers.target

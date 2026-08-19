@@ -64,6 +64,7 @@ def test_publish_monitor_syncs_auth_secrets_before_deploy(tmp_path: Path, monkey
             assert json.loads(secrets.read_text(encoding="utf-8")) == {
                 "PONTO_USERNAME": "usuario",
                 "PONTO_PASSWORD": "senha",
+                "CONTROL_AGENT_TOKEN": "token-agente",
             }
         calls.append(command)
         return Result()
@@ -79,6 +80,7 @@ def test_publish_monitor_syncs_auth_secrets_before_deploy(tmp_path: Path, monkey
         project_root=tmp_path,
         auth_username="usuario",
         auth_password="senha",
+        agent_token="token-agente",
     )
 
     assert calls[0][1:4] == ["pages", "secret", "bulk"]

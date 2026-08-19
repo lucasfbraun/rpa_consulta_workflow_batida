@@ -351,8 +351,9 @@ no `.env`. Se retornar erro de autorização, confira o Account ID, a permissão
 **Cloudflare Pages: Edit**, o escopo da conta, o filtro de IP e se o token foi
 copiado por inteiro.
 
-Antes do deploy, `rpa-ponto publish` sincroniza somente `PONTO_USERNAME` e
-`PONTO_PASSWORD` como secrets criptografados do projeto Pages. Esses valores não
+Antes do deploy, `rpa-ponto publish` sincroniza `PONTO_USERNAME`,
+`PONTO_PASSWORD` e, se configurado, `CONTROL_AGENT_TOKEN` como secrets
+criptografados do projeto Pages. Esses valores não
 são gravados no HTML, no manifest ou no JavaScript entregue ao navegador. A
 publicação inclui a Pages Function que valida o login, o cookie de sessão assinado
 e os arquivos da PWA. O card **Instalar monitor** fica na própria tela de login,
@@ -420,10 +421,13 @@ Confira:
 - o relatório deve aparecer em <https://rpa-ponto-monitor.pages.dev/>;
 - o logout do ERP deve ter sido concluído.
 
-## 8. Agendamento no Linux com systemd
+## 8. Agendamento fixo legado no Linux com systemd
 
 O repositório inclui um serviço e um timer em `deploy/systemd`. O modelo executa
 o RPA diariamente às 06:00 no fuso horário configurado no Linux. Confira o fuso:
+
+Esta opção permanece documentada para instalações antigas. Não a mantenha ativa
+junto com o controle do painel descrito na seção 12.
 
 ```bash
 timedatectl
@@ -514,7 +518,7 @@ reativá-lo. O `cd` precisa acontecer antes do `pytest`: o usuário `rpa-ponto` 
 tem permissão para usar `/home/ubuntu` como diretório de trabalho.
 
 ```bash
-sudo systemctl stop rpa-ponto.timer
+sudo systemctl stop rpa-ponto.timer rpa-ponto-control.timer
 sudo systemctl status rpa-ponto.service --no-pager
 
 cd /opt/rpa-ponto
@@ -525,13 +529,17 @@ sudo -u rpa-ponto -H npm ci --prefix /opt/rpa-ponto
 sudo .venv/bin/python -m playwright install-deps chromium
 sudo -u rpa-ponto -H .venv/bin/python -m playwright install chromium
 sudo -u rpa-ponto -H .venv/bin/python -m pytest tests
+sudo cp deploy/systemd/rpa-ponto.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.timer /etc/systemd/system/
 sudo -u rpa-ponto -H .venv/bin/rpa-ponto publish
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now rpa-ponto.timer
-sudo systemctl restart rpa-ponto.timer
-systemctl list-timers rpa-ponto.timer
-sudo systemctl status rpa-ponto.timer --no-pager
+sudo systemctl disable rpa-ponto.timer
+sudo systemctl enable --now rpa-ponto-control.timer
+sudo systemctl restart rpa-ponto-control.timer
+systemctl list-timers rpa-ponto-control.timer
+sudo systemctl status rpa-ponto-control.timer --no-pager
 ```
 
 O `output` e o `.env` são ignorados pelo Git e permanecem na máquina durante o
@@ -555,9 +563,9 @@ aprovado somente quando:
 - <https://rpa-ponto-monitor.pages.dev/> receber a nova execução;
 - a tela de login do Pages mostrar o card da PWA e o painel autenticado não
   repeti-lo;
-- `systemctl status rpa-ponto.timer` mostrar `enabled` e `active (waiting)`;
-- `systemctl list-timers rpa-ponto.timer` mostrar o próximo horário às
-  `06:00:00 -03`.
+- `systemctl status rpa-ponto-control.timer` mostrar `enabled` e `active (waiting)`;
+- o painel permitir criar, pausar e excluir mais de um agendamento;
+- o botão **Executar agora** gerar um pedido que o agente coleta em até um minuto.
 
 ## 11. Diagnóstico e migração para outro Linux
 
@@ -652,6 +660,54 @@ no relatório do Pages.
 7. configure `MONITOR_HISTORY_DAYS=3` e teste a publicação com
    `rpa-ponto publish`, confirmando o login e o card da PWA;
 8. execute uma importação controlada e confira journal, screenshots e logout;
-9. configure `America/Sao_Paulo`, ative o timer com `enable --now` e confirme
-   `enabled`, `active (waiting)` e o próximo disparo às `06:00:00 -03`;
+9. configure `America/Sao_Paulo`, ative `rpa-ponto-control.timer` e confirme
+   `enabled`, `active (waiting)` e a consulta do painel a cada minuto;
 10. somente então desative definitivamente a máquina antiga.
+
+## 12. Controle e múltiplos agendamentos pelo painel
+
+O painel autenticado permite iniciar o fluxo e cadastrar quantos agendamentos
+forem necessários. A fila e os horários ficam no Cloudflare D1; o agente no
+Lightsail consulta o painel a cada minuto. Todos os horários são interpretados em
+`America/Sao_Paulo`.
+
+O banco desta instalação já foi criado, recebeu a migração inicial e está
+vinculado no `wrangler.jsonc`. Não o recrie no Lightsail.
+
+Ao usar outra conta Cloudflare, execute `npx wrangler d1 create
+rpa-ponto-control`, atualize o `database_id` retornado e aplique as migrações com
+`npx wrangler d1 migrations apply rpa-ponto-control --remote`. No `.env` do
+Lightsail, configure:
+
+```dotenv
+CONTROL_API_URL=https://rpa-ponto-monitor.pages.dev
+CONTROL_AGENT_TOKEN=um_segredo_aleatorio_de_64_caracteres
+```
+
+Gere o token sem publicá-lo em logs ou no Git:
+
+```bash
+openssl rand -hex 32
+sudo -u rpa-ponto -H nano /opt/rpa-ponto/.env
+```
+
+Publique o painel e troque o agendador fixo pelo agente:
+
+```bash
+cd /opt/rpa-ponto
+sudo -u rpa-ponto -H .venv/bin/rpa-ponto publish
+sudo cp deploy/systemd/rpa-ponto.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.timer /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/rpa-ponto.service /etc/systemd/system/rpa-ponto-control.service /etc/systemd/system/rpa-ponto-control.timer
+sudo systemctl daemon-reload
+sudo systemctl disable --now rpa-ponto.timer
+sudo systemctl enable --now rpa-ponto-control.timer
+systemctl list-timers rpa-ponto-control.timer
+sudo journalctl -u rpa-ponto-control.service -n 50 --no-pager
+```
+
+Antes de ativar esse timer em produção, o teste manual de
+`sudo systemctl start rpa-ponto.service` deve terminar com sucesso. Enquanto o
+ERP estiver retornando timeout, deixe `rpa-ponto-control.timer` desativado para
+que pedidos do painel não gerem novas tentativas automaticamente.

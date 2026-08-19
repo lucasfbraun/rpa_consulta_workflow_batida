@@ -42,6 +42,23 @@ def test_erp_locale_defaults_to_brazilian_portuguese(monkeypatch):
 
     assert settings.erp_locale == "pt-BR"
     assert settings.monitor_history_days == 3
+    assert settings.control_api_url is None
+    assert settings.control_agent_token is None
+
+
+def test_control_configuration(monkeypatch):
+    monkeypatch.setattr("rpa_ponto.config.load_dotenv", lambda **_kwargs: None)
+    monkeypatch.setenv("PONTO_API_URL", "https://ponto.example")
+    monkeypatch.setenv("PONTO_USERNAME", "usuario")
+    monkeypatch.setenv("PONTO_PASSWORD", "senha")
+    monkeypatch.setenv("ERP_URL", "https://erp.example")
+    monkeypatch.setenv("CONTROL_API_URL", "https://painel.example/")
+    monkeypatch.setenv("CONTROL_AGENT_TOKEN", "segredo")
+
+    settings = Settings.from_env()
+
+    assert settings.control_api_url == "https://painel.example"
+    assert settings.control_agent_token == "segredo"
 
 
 def test_monitor_history_days_must_be_positive(monkeypatch):

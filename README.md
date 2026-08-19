@@ -208,11 +208,56 @@ o relatório que já existe, sem executar o ERP:
 rpa-ponto publish
 ```
 
-Antes de cada publicação, o comando sincroniza somente `PONTO_USERNAME` e
-`PONTO_PASSWORD` como secrets criptografados do projeto Pages. A tela de login
+Antes de cada publicação, o comando sincroniza `PONTO_USERNAME`,
+`PONTO_PASSWORD` e, quando preenchido, `CONTROL_AGENT_TOKEN` como secrets
+criptografados do projeto Pages. A tela de login
 oferece um card para instalação como aplicativo (PWA); ele não aparece no painel
 de execuções depois da autenticação.
 
 No Linux, use `npx wrangler` no lugar de `npx.cmd wrangler`. Para uma execução
 sem login interativo, defina `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` no
 ambiente do processo, usando um token com permissão para editar o Pages.
+
+## Executar e agendar pelo painel
+
+O `index.html` autenticado possui o botão **Executar agora** e aceita vários
+agendamentos, cada um com seu horário e dias da semana. Os horários usam
+`America/Sao_Paulo`. O Pages grava a fila no D1; o Lightsail consulta a fila a
+cada minuto, portanto nenhuma porta de entrada precisa ser aberta no servidor.
+
+O banco `rpa-ponto-control` desta instalação já foi criado, migrado e seu ID está
+no `wrangler.jsonc`. O servidor não precisa recriá-lo nem aplicar a migração
+inicial.
+
+Somente ao instalar em outra conta Cloudflare, crie o banco com
+`npx wrangler d1 create rpa-ponto-control`, atualize o `database_id` e execute
+`npx wrangler d1 migrations apply rpa-ponto-control --remote`. Gere um segredo
+exclusivo no Lightsail e guarde-o somente no `.env`:
+
+```bash
+openssl rand -hex 32
+sudo -u rpa-ponto -H nano /opt/rpa-ponto/.env
+```
+
+```dotenv
+CONTROL_API_URL=https://rpa-ponto-monitor.pages.dev
+CONTROL_AGENT_TOKEN=cole_aqui_o_valor_gerado
+```
+
+Depois publique para sincronizar o secret e instale as unidades:
+
+```bash
+cd /opt/rpa-ponto
+sudo -u rpa-ponto -H .venv/bin/rpa-ponto publish
+sudo cp deploy/systemd/rpa-ponto.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.service /etc/systemd/system/
+sudo cp deploy/systemd/rpa-ponto-control.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl disable --now rpa-ponto.timer
+sudo systemctl enable --now rpa-ponto-control.timer
+systemctl list-timers rpa-ponto-control.timer
+```
+
+O timer antigo de horário fixo deve permanecer desativado quando o controle pelo
+painel estiver ativo. O arquivo de trava compartilhado impede que uma execução
+manual do serviço e o agente iniciem dois fluxos simultâneos.

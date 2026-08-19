@@ -52,6 +52,8 @@ class Settings:
     cloudflare_pages_enabled: bool
     cloudflare_pages_project: str | None
     cloudflare_pages_branch: str
+    control_api_url: str | None
+    control_agent_token: str | None
 
     @classmethod
     def from_env(cls, env_file: Path | None = None) -> "Settings":
@@ -136,4 +138,6 @@ class Settings:
             cloudflare_pages_enabled=cloudflare_pages_enabled,
             cloudflare_pages_project=cloudflare_pages_project,
             cloudflare_pages_branch=cloudflare_pages_branch,
+            control_api_url=os.getenv("CONTROL_API_URL", "").strip().rstrip("/") or None,
+            control_agent_token=os.getenv("CONTROL_AGENT_TOKEN", "").strip() or None,
         )
