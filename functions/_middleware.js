@@ -154,9 +154,14 @@ async function userApi(request, env, path) {
   if (id && request.method === "PATCH") {
     let data;
     try { data = await body(request); } catch { return json({ error: "invalid_body" }, 400); }
-    if (typeof data.enabled !== "boolean") return json({ error: "invalid_body" }, 400);
-    const updated = await env.CONTROL_DB.prepare("UPDATE schedules SET enabled = ?, updated_at = ? WHERE id = ?").bind(data.enabled ? 1 : 0, new Date().toISOString(), id).run();
-    if (updated.meta.changes && !data.enabled) {
+    const fullSchedule = data && ("name" in data || "time" in data || "weekdays" in data);
+    const schedule = fullSchedule ? validSchedule(data) : null;
+    if (fullSchedule && !schedule) return json({ error: "Agendamento inválido." }, 400);
+    if (!fullSchedule && typeof data?.enabled !== "boolean") return json({ error: "invalid_body" }, 400);
+    const updated = fullSchedule
+      ? await env.CONTROL_DB.prepare("UPDATE schedules SET name = ?, time = ?, weekdays = ?, enabled = ?, last_enqueued_on = NULL, updated_at = ? WHERE id = ?").bind(schedule.name, schedule.time, JSON.stringify(schedule.weekdays), schedule.enabled ? 1 : 0, new Date().toISOString(), id).run()
+      : await env.CONTROL_DB.prepare("UPDATE schedules SET enabled = ?, updated_at = ? WHERE id = ?").bind(data.enabled ? 1 : 0, new Date().toISOString(), id).run();
+    if (updated.meta.changes && (fullSchedule || !data.enabled)) {
       await env.CONTROL_DB.prepare("DELETE FROM commands WHERE schedule_id = ? AND status = 'pending'").bind(id).run();
     }
     return updated.meta.changes ? json({ ok: true }) : json({ error: "not_found" }, 404);

@@ -667,7 +667,8 @@ no relatório do Pages.
 ## 12. Controle e múltiplos agendamentos pelo painel
 
 O painel autenticado permite iniciar o fluxo e cadastrar quantos agendamentos
-forem necessários. A fila e os horários ficam no Cloudflare D1; o agente no
+forem necessários. Cada agendamento pode ser editado, pausado, reativado ou
+excluído. A fila e os horários ficam no Cloudflare D1; o agente no
 Lightsail consulta o painel a cada minuto. Todos os horários são interpretados em
 `America/Sao_Paulo`.
 

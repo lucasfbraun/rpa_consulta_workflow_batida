@@ -221,7 +221,8 @@ ambiente do processo, usando um token com permissão para editar o Pages.
 ## Executar e agendar pelo painel
 
 O `index.html` autenticado possui o botão **Executar agora** e aceita vários
-agendamentos, cada um com seu horário e dias da semana. Os horários usam
+agendamentos, cada um com seu horário e dias da semana. Agendamentos existentes
+podem ser editados, pausados, reativados ou excluídos. Os horários usam
 `America/Sao_Paulo`. O Pages grava a fila no D1; o Lightsail consulta a fila a
 cada minuto, portanto nenhuma porta de entrada precisa ser aberta no servidor.
 

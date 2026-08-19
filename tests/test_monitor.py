@@ -22,7 +22,10 @@ def test_local_report_contains_run_step_and_screenshot(tmp_path: Path):
     assert "Instalar monitor" not in html
     assert "Executar agora" in html
     assert "Adicionar agendamento" in html
+    assert "Salvar alterações" in html
+    assert "Editar" in html
     assert "/api/control/schedules" in html
+    assert "Fila livre para uma nova execução." in html
     login_html = (tmp_path / "login.html").read_text(encoding="utf-8")
     assert "Instalar monitor" in login_html
     assert 'rel="manifest" href="/manifest.webmanifest"' in login_html
