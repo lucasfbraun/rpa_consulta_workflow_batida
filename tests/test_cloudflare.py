@@ -27,7 +27,9 @@ def test_publish_monitor_invokes_local_wrangler(tmp_path: Path, monkeypatch):
         return Result()
 
     monkeypatch.setattr("rpa_ponto.cloudflare.subprocess.run", fake_run)
-    monkeypatch.setattr("rpa_ponto.cloudflare.os.name", "nt")
+    monkeypatch.setattr(
+        "rpa_ponto.cloudflare._wrangler_executable", lambda _root: str(executable)
+    )
 
     url = publish_monitor(monitor, "rpa-ponto", project_root=tmp_path)
 
@@ -47,7 +49,8 @@ def test_publish_monitor_syncs_auth_secrets_before_deploy(tmp_path: Path, monkey
     (monitor / "index.html").write_text("relatorio", encoding="utf-8")
     bin_dir = tmp_path / "node_modules" / ".bin"
     bin_dir.mkdir(parents=True)
-    (bin_dir / "wrangler.cmd").write_text("", encoding="utf-8")
+    executable = bin_dir / "wrangler.cmd"
+    executable.write_text("", encoding="utf-8")
     calls = []
 
     class Result:
@@ -66,7 +69,9 @@ def test_publish_monitor_syncs_auth_secrets_before_deploy(tmp_path: Path, monkey
         return Result()
 
     monkeypatch.setattr("rpa_ponto.cloudflare.subprocess.run", fake_run)
-    monkeypatch.setattr("rpa_ponto.cloudflare.os.name", "nt")
+    monkeypatch.setattr(
+        "rpa_ponto.cloudflare._wrangler_executable", lambda _root: str(executable)
+    )
 
     publish_monitor(
         monitor,
