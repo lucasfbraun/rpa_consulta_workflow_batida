@@ -49,11 +49,15 @@ function securedResponse(original, cacheControl = "private, no-store") {
   const response = new Response(original.body, original);
   response.headers.set("Cache-Control", cacheControl);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("Referrer-Policy", "same-origin");
   response.headers.set("X-Frame-Options", "DENY");
   return response;
 }
-function sameOrigin(request) { return request.headers.get("Origin") === new URL(request.url).origin; }
+function sameOrigin(request) {
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== "null") return origin === new URL(request.url).origin;
+  return request.headers.get("Sec-Fetch-Site") === "same-origin";
+}
 async function body(request) {
   if (Number(request.headers.get("Content-Length") || 0) > 8192) throw new Error("too_large");
   return request.json();
