@@ -118,6 +118,17 @@ Com `ERP_URL` preenchida no `.env`, execute:
 .\scripts\record_erp.ps1
 ```
 
+É possível configurar uma segunda rota para o mesmo ERP. Ela será tentada
+somente quando a navegação para `ERP_URL` expirar por timeout:
+
+```dotenv
+ERP_URL=https://erp-principal.seudominio.com.br
+ERP_FALLBACK_URL=https://erp-alternativo.seudominio.com.br
+```
+
+Falhas de autenticação, certificado ou respostas HTTP não acionam a alternativa,
+para que problemas de configuração não sejam mascarados.
+
 Faça o processo no navegador aberto e, ao terminar, feche o navegador e o
 Playwright Inspector. A gravação será salva localmente como `rpa_recording.py` e
 está ignorada pelo Git. Como o gravador pode registrar valores digitados, não

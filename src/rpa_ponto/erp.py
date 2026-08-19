@@ -38,7 +38,7 @@ def import_into_erp(
             page = context.new_page()
             page.set_default_timeout(20_000)
             page.on("dialog", lambda dialog: dialog.accept())
-            page.goto(settings.erp_url, wait_until="domcontentloaded")
+            _open_erp_url(page, settings, reporter)
             if reporter:
                 reporter.capture(page, "erp_aberto")
             _erp_steps(page, import_file.resolve(), settings, reporter)
@@ -65,6 +65,24 @@ def import_into_erp(
         finally:
             context.close()
             browser.close()
+
+
+def _open_erp_url(
+    page: Page, settings: Settings, reporter: ExecutionReporter | None
+) -> None:
+    try:
+        page.goto(settings.erp_url, wait_until="domcontentloaded")
+    except PlaywrightTimeoutError:
+        fallback_url = settings.erp_fallback_url
+        if not fallback_url or fallback_url == settings.erp_url:
+            raise
+        if reporter:
+            reporter.step(
+                "erp_url_principal_timeout",
+                status="info",
+                message="URL principal expirou; tentando a URL alternativa.",
+            )
+        page.goto(fallback_url, wait_until="domcontentloaded")
 
 
 def _erp_steps(

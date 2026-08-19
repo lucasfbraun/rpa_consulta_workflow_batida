@@ -36,11 +36,13 @@ def test_erp_locale_defaults_to_brazilian_portuguese(monkeypatch):
     monkeypatch.setenv("PONTO_PASSWORD", "senha")
     monkeypatch.setenv("ERP_URL", "https://erp.example")
     monkeypatch.delenv("ERP_LOCALE", raising=False)
+    monkeypatch.delenv("ERP_FALLBACK_URL", raising=False)
     monkeypatch.delenv("CLOUDFLARE_PAGES_ENABLED", raising=False)
 
     settings = Settings.from_env()
 
     assert settings.erp_locale == "pt-BR"
+    assert settings.erp_fallback_url is None
     assert settings.monitor_history_days == 3
     assert settings.control_api_url is None
     assert settings.control_agent_token is None
@@ -59,6 +61,19 @@ def test_control_configuration(monkeypatch):
 
     assert settings.control_api_url == "https://painel.example"
     assert settings.control_agent_token == "segredo"
+
+
+def test_erp_fallback_url(monkeypatch):
+    monkeypatch.setattr("rpa_ponto.config.load_dotenv", lambda **_kwargs: None)
+    monkeypatch.setenv("PONTO_API_URL", "https://ponto.example")
+    monkeypatch.setenv("PONTO_USERNAME", "usuario")
+    monkeypatch.setenv("PONTO_PASSWORD", "senha")
+    monkeypatch.setenv("ERP_URL", "https://erp-principal.example")
+    monkeypatch.setenv("ERP_FALLBACK_URL", "  https://erp-alternativo.example  ")
+
+    settings = Settings.from_env()
+
+    assert settings.erp_fallback_url == "https://erp-alternativo.example"
 
 
 def test_monitor_history_days_must_be_positive(monkeypatch):

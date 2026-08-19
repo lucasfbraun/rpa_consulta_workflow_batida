@@ -37,6 +37,7 @@ class Settings:
     afd_initial_sequence: str
     afd_keep_files: int
     erp_url: str
+    erp_fallback_url: str | None
     erp_username: str | None
     erp_password: str | None
     erp_program_code: str
@@ -121,6 +122,7 @@ class Settings:
             afd_initial_sequence=afd_initial_sequence,
             afd_keep_files=afd_keep_files,
             erp_url=os.environ["ERP_URL"],
+            erp_fallback_url=os.getenv("ERP_FALLBACK_URL", "").strip() or None,
             erp_username=os.getenv("ERP_USERNAME") or None,
             erp_password=os.getenv("ERP_PASSWORD") or None,
             erp_program_code=os.getenv("ERP_PROGRAM_CODE", "CCRHP055"),

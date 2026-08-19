@@ -47,6 +47,7 @@ roteável, preferencialmente um hostname com certificado HTTPS válido:
 
 ```dotenv
 ERP_URL=https://erp.seudominio.com.br
+ERP_FALLBACK_URL=https://erp-alternativo.seudominio.com.br
 ERP_VERIFY_TLS=true
 ```
 
@@ -186,6 +187,7 @@ PONTO_PASSWORD=
 PONTO_API_URL=https://relogio-ponto.lucasfbraun.workers.dev/api/records/afd
 
 ERP_URL=
+ERP_FALLBACK_URL=
 ERP_USERNAME=
 ERP_PASSWORD=
 ERP_LOCALE=pt-BR
