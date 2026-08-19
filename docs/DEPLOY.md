@@ -192,7 +192,7 @@ ERP_LOCALE=pt-BR
 
 RPA_HEADLESS=true
 MONITOR_ENABLED=true
-MONITOR_KEEP_RUNS=1
+MONITOR_HISTORY_DAYS=3
 
 CLOUDFLARE_PAGES_ENABLED=true
 CLOUDFLARE_PAGES_PROJECT=rpa-ponto-monitor
@@ -211,6 +211,10 @@ usados pela automação.
 
 O `.env` contém credenciais, está ignorado pelo Git e não deve ser publicado.
 Consulte `.env.example` para todas as opções disponíveis.
+
+`MONITOR_HISTORY_DAYS=3` mantém no relatório todas as execuções e screenshots dos
+últimos três dias. A limpeza dos dados mais antigos acontece automaticamente e
+não remove os arquivos `output/AFD*.txt`.
 
 ## 5. Preservar o sequencial AFD
 
@@ -347,6 +351,14 @@ no `.env`. Se retornar erro de autorização, confira o Account ID, a permissão
 **Cloudflare Pages: Edit**, o escopo da conta, o filtro de IP e se o token foi
 copiado por inteiro.
 
+Antes do deploy, `rpa-ponto publish` sincroniza somente `PONTO_USERNAME` e
+`PONTO_PASSWORD` como secrets criptografados do projeto Pages. Esses valores não
+são gravados no HTML, no manifest ou no JavaScript entregue ao navegador. A
+publicação inclui a Pages Function que valida o login, o cookie de sessão assinado
+e os arquivos da PWA. Depois de entrar, o painel exibe o card **Instalar monitor**;
+o botão usa a instalação nativa do navegador ou orienta a adicionar o aplicativo
+à tela inicial.
+
 O erro `Cannot use the access token from location ... [code: 9109]` significa que
 o token foi reconhecido, mas o endereço de saída do servidor não está autorizado
 pelo filtro de IP. Edite o token no painel e remova temporariamente **Client IP
@@ -426,7 +438,27 @@ sudo cp /opt/rpa-ponto/deploy/systemd/rpa-ponto.timer /etc/systemd/system/
 sudo systemd-analyze verify /etc/systemd/system/rpa-ponto.service /etc/systemd/system/rpa-ponto.timer
 sudo systemctl daemon-reload
 sudo systemctl enable --now rpa-ponto.timer
+sudo systemctl restart rpa-ponto.timer
 ```
+
+Confira a configuração persistente e o próximo disparo:
+
+```bash
+timedatectl
+systemctl list-timers rpa-ponto.timer
+sudo systemctl status rpa-ponto.timer --no-pager
+```
+
+No Lightsail configurado para São Paulo, a validação deve mostrar:
+
+- `Time zone: America/Sao_Paulo (-03, -0300)`;
+- `Loaded: ... enabled`, confirmando que o timer volta após reinicializações;
+- `Active: active (waiting)`;
+- próximo `Trigger` às `06:00:00 -03`.
+
+Se aparecer `06:00:00 UTC`, ajuste o fuso com `timedatectl set-timezone` e
+reinicie o timer. Se aparecer `disabled`, execute novamente
+`sudo systemctl enable --now rpa-ponto.timer`.
 
 Para mudar o horário, edite `OnCalendar` em
 `/etc/systemd/system/rpa-ponto.timer`. Exemplos:
@@ -477,22 +509,37 @@ fora do systemd.
 
 ## 9. Atualizar uma instalação existente
 
-Pare o timer, atualize o código e valide antes de reativá-lo:
+Pare o timer, entre na pasta do projeto, atualize o código e valide antes de
+reativá-lo. O `cd` precisa acontecer antes do `pytest`: o usuário `rpa-ponto` não
+tem permissão para usar `/home/ubuntu` como diretório de trabalho.
 
 ```bash
 sudo systemctl stop rpa-ponto.timer
-sudo -u rpa-ponto -H git -C /opt/rpa-ponto pull --ff-only
-sudo -u rpa-ponto -H /opt/rpa-ponto/.venv/bin/python -m pip install -e "/opt/rpa-ponto[dev]"
+sudo systemctl status rpa-ponto.service --no-pager
+
+cd /opt/rpa-ponto
+sudo -u rpa-ponto -H git status --short
+sudo -u rpa-ponto -H git pull --ff-only
+sudo -u rpa-ponto -H .venv/bin/python -m pip install -e "/opt/rpa-ponto[dev]"
 sudo -u rpa-ponto -H npm ci --prefix /opt/rpa-ponto
-sudo /opt/rpa-ponto/.venv/bin/python -m playwright install-deps chromium
-sudo -u rpa-ponto -H /opt/rpa-ponto/.venv/bin/python -m playwright install chromium
-sudo -u rpa-ponto -H /opt/rpa-ponto/.venv/bin/python -m pytest /opt/rpa-ponto/tests
+sudo .venv/bin/python -m playwright install-deps chromium
+sudo -u rpa-ponto -H .venv/bin/python -m playwright install chromium
+sudo -u rpa-ponto -H .venv/bin/python -m pytest tests
+sudo -u rpa-ponto -H .venv/bin/rpa-ponto publish
+
 sudo systemctl daemon-reload
-sudo systemctl start rpa-ponto.timer
+sudo systemctl enable --now rpa-ponto.timer
+sudo systemctl restart rpa-ponto.timer
+systemctl list-timers rpa-ponto.timer
+sudo systemctl status rpa-ponto.timer --no-pager
 ```
 
 O `output` e o `.env` são ignorados pelo Git e permanecem na máquina durante o
-`pull`. Mesmo assim, confirme que nenhum RPA está rodando antes de atualizar.
+`pull`. Mesmo assim, confirme que nenhum RPA está rodando antes de atualizar. Se
+`git status --short` listar alterações em arquivos versionados, não use
+`git reset`; examine-as com `sudo -u rpa-ponto -H git diff` antes de continuar.
+O `publish` atualiza imediatamente o login, a PWA e o relatório, sem precisar
+executar uma nova importação no ERP.
 
 ## 10. Critérios para considerar o deploy concluído
 
@@ -506,7 +553,10 @@ aprovado somente quando:
 - `sudo systemctl start rpa-ponto.service` terminar com sucesso;
 - o relatório mostrar importação e logout concluídos;
 - <https://rpa-ponto-monitor.pages.dev/> receber a nova execução;
-- `systemctl list-timers rpa-ponto.timer` mostrar o próximo horário.
+- a URL do Pages exigir login e, depois da autenticação, mostrar o card da PWA;
+- `systemctl status rpa-ponto.timer` mostrar `enabled` e `active (waiting)`;
+- `systemctl list-timers rpa-ponto.timer` mostrar o próximo horário às
+  `06:00:00 -03`.
 
 ## 11. Diagnóstico e migração para outro Linux
 
@@ -587,6 +637,9 @@ no relatório do Pages.
 4. configure `RPA_HEADLESS=true` e `ERP_LOCALE=pt-BR`;
 5. crie um novo token da Cloudflare ou atualize o filtro de IP do token existente;
 6. preencha o novo `.env`, que nunca é transferido pelo Git;
-7. teste primeiro a publicação com `rpa-ponto publish`;
+7. configure `MONITOR_HISTORY_DAYS=3` e teste a publicação com
+   `rpa-ponto publish`, confirmando o login e o card da PWA;
 8. execute uma importação controlada e confira journal, screenshots e logout;
-9. somente então ative `rpa-ponto.timer` e desative definitivamente a máquina antiga.
+9. configure `America/Sao_Paulo`, ative o timer com `enable --now` e confirme
+   `enabled`, `active (waiting)` e o próximo disparo às `06:00:00 -03`;
+10. somente então desative definitivamente a máquina antiga.
