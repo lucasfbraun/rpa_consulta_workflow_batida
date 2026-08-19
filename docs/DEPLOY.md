@@ -566,15 +566,26 @@ O instalador mantém dois locais distintos: o clone inicial usado para executar 
 instalador e a aplicação definitiva em `/opt/rpa-ponto`. O systemd usa somente a
 aplicação em `/opt/rpa-ponto`, que pertence ao usuário `rpa-ponto`.
 
-Um `git pull` executado como `ubuntu` retorna `detected dubious ownership`. Não
-adicione `safe.directory` e não mude o proprietário. Depois de enviar o commit ao
-GitHub, atualize assim:
+Não execute `git pull` diretamente como `ubuntu` dentro de `/opt/rpa-ponto`:
+
+```bash
+ubuntu@servidor:/opt/rpa-ponto$ git pull
+fatal: detected dubious ownership in repository at '/opt/rpa-ponto'
+```
+
+Esse erro é esperado porque o repositório pertence ao usuário de serviço
+`rpa-ponto`. Não execute `git config --global --add safe.directory`, não use
+`sudo git pull` como `root` e não mude o proprietário da pasta. Depois de enviar
+o commit ao GitHub, faça a atualização e confira o commit recebido com:
 
 ```bash
 sudo -u rpa-ponto -H git -C /opt/rpa-ponto pull --ff-only
-sudo -u rpa-ponto -H /opt/rpa-ponto/.venv/bin/python -m pip install -e "/opt/rpa-ponto[dev]"
 sudo -u rpa-ponto -H git -C /opt/rpa-ponto log -1 --oneline
 ```
+
+Quando a atualização também alterar código ou dependências, continue pelo fluxo
+completo da seção 9, que reinstala o pacote, executa os testes, publica o painel e
+reativa o timer.
 
 ### Servidor sem interface gráfica
 
