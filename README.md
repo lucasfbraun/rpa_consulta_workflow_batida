@@ -209,8 +209,9 @@ rpa-ponto publish
 ```
 
 Antes de cada publicação, o comando sincroniza somente `PONTO_USERNAME` e
-`PONTO_PASSWORD` como secrets criptografados do projeto Pages. O painel também
-oferece um card para instalação como aplicativo (PWA).
+`PONTO_PASSWORD` como secrets criptografados do projeto Pages. A tela de login
+oferece um card para instalação como aplicativo (PWA); ele não aparece no painel
+de execuções depois da autenticação.
 
 No Linux, use `npx wrangler` no lugar de `npx.cmd wrangler`. Para uma execução
 sem login interativo, defina `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` no

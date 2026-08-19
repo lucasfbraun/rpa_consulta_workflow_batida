@@ -355,9 +355,9 @@ Antes do deploy, `rpa-ponto publish` sincroniza somente `PONTO_USERNAME` e
 `PONTO_PASSWORD` como secrets criptografados do projeto Pages. Esses valores não
 são gravados no HTML, no manifest ou no JavaScript entregue ao navegador. A
 publicação inclui a Pages Function que valida o login, o cookie de sessão assinado
-e os arquivos da PWA. Depois de entrar, o painel exibe o card **Instalar monitor**;
-o botão usa a instalação nativa do navegador ou orienta a adicionar o aplicativo
-à tela inicial.
+e os arquivos da PWA. O card **Instalar monitor** fica na própria tela de login,
+antes da autenticação, e não aparece no painel de execuções. O botão usa a
+instalação nativa do navegador ou orienta a adicionar o aplicativo à tela inicial.
 
 O erro `Cannot use the access token from location ... [code: 9109]` significa que
 o token foi reconhecido, mas o endereço de saída do servidor não está autorizado
@@ -553,7 +553,8 @@ aprovado somente quando:
 - `sudo systemctl start rpa-ponto.service` terminar com sucesso;
 - o relatório mostrar importação e logout concluídos;
 - <https://rpa-ponto-monitor.pages.dev/> receber a nova execução;
-- a URL do Pages exigir login e, depois da autenticação, mostrar o card da PWA;
+- a tela de login do Pages mostrar o card da PWA e o painel autenticado não
+  repeti-lo;
 - `systemctl status rpa-ponto.timer` mostrar `enabled` e `active (waiting)`;
 - `systemctl list-timers rpa-ponto.timer` mostrar o próximo horário às
   `06:00:00 -03`.

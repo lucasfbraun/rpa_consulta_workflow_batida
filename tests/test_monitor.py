@@ -19,6 +19,10 @@ def test_local_report_contains_run_step_and_screenshot(tmp_path: Path):
     html = (tmp_path / "index.html").read_text(encoding="utf-8")
     assert "__RPA_DATA__" not in html
     assert "abrir_erp" in html
+    assert "Instalar monitor" not in html
+    login_html = (tmp_path / "login.html").read_text(encoding="utf-8")
+    assert "Instalar monitor" in login_html
+    assert 'rel="manifest" href="/manifest.webmanifest"' in login_html
     run = json.loads((reporter.run_dir / "run.json").read_text(encoding="utf-8"))
     assert run["status"] == "completed"
     assert run["steps"][0]["name"] == "abrir_erp"
