@@ -48,7 +48,7 @@ class Settings:
     global_delay_ms: int
     monitor_enabled: bool
     monitor_output_dir: Path
-    monitor_keep_runs: int
+    monitor_history_days: int
     cloudflare_pages_enabled: bool
     cloudflare_pages_project: str | None
     cloudflare_pages_branch: str
@@ -90,11 +90,11 @@ class Settings:
             os.getenv("MONITOR_OUTPUT_DIR", "output/monitor")
         )
         try:
-            monitor_keep_runs = int(os.getenv("MONITOR_KEEP_RUNS", "1"))
+            monitor_history_days = int(os.getenv("MONITOR_HISTORY_DAYS", "3"))
         except ValueError as exc:
-            raise ValueError("MONITOR_KEEP_RUNS deve ser um número inteiro.") from exc
-        if monitor_keep_runs < 1:
-            raise ValueError("MONITOR_KEEP_RUNS deve ser pelo menos 1.")
+            raise ValueError("MONITOR_HISTORY_DAYS deve ser um número inteiro.") from exc
+        if monitor_history_days < 1:
+            raise ValueError("MONITOR_HISTORY_DAYS deve ser pelo menos 1.")
 
         cloudflare_pages_enabled = _as_bool(
             os.getenv("CLOUDFLARE_PAGES_ENABLED"), default=False
@@ -132,7 +132,7 @@ class Settings:
             global_delay_ms=global_delay_ms,
             monitor_enabled=monitor_enabled,
             monitor_output_dir=monitor_output_dir,
-            monitor_keep_runs=monitor_keep_runs,
+            monitor_history_days=monitor_history_days,
             cloudflare_pages_enabled=cloudflare_pages_enabled,
             cloudflare_pages_project=cloudflare_pages_project,
             cloudflare_pages_branch=cloudflare_pages_branch,

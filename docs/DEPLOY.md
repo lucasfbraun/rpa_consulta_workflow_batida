@@ -261,10 +261,11 @@ O Account ID identifica a conta e não é a senha ou o token.
    **Account > Cloudflare Pages > Edit**.
 6. Em **Account Resources**, use **Include > Specific account** e selecione apenas
    a conta que contém `rpa-ponto-monitor`.
-7. Opcionalmente, em **Client IP Address Filtering**, restrinja o token ao IP
-   estático da máquina Linux usando o formato `IP/32`, por exemplo
-   `98.82.31.2/32`. Ao migrar de servidor, atualize essa restrição para o novo IP
-   antes de testar a publicação.
+7. Para o primeiro teste, deixe **Client IP Address Filtering** sem restrição. O
+   Lightsail pode acessar a API por IPv6 mesmo quando possui um IPv4 estático;
+   permitir somente o IPv4 causa o erro Cloudflare `9109`. Se a política exigir
+   filtro por origem, confirme depois todos os endereços de saída estáveis e
+   permita IPv4 em `/32` e IPv6 em `/128`. Ao migrar, atualize ambos.
 8. Selecione **Continue to summary > Create Token**.
 9. Copie o token assim que ele for exibido e grave somente no `.env`:
 
@@ -345,6 +346,35 @@ O comando deve imprimir `Relatório online` e a URL da implantação. Se retorna
 no `.env`. Se retornar erro de autorização, confira o Account ID, a permissão
 **Cloudflare Pages: Edit**, o escopo da conta, o filtro de IP e se o token foi
 copiado por inteiro.
+
+O erro `Cannot use the access token from location ... [code: 9109]` significa que
+o token foi reconhecido, mas o endereço de saída do servidor não está autorizado
+pelo filtro de IP. Edite o token no painel e remova temporariamente **Client IP
+Address Filtering**. Em Lightsail com IPv6, liberar somente o IPv4 estático não é
+suficiente. Depois de salvar a política, o valor do token no `.env` só precisa ser
+alterado se a Cloudflare emitir um novo token.
+
+Se a edição deixar uma regra incompleta como `Is not in` com valor vazio e exibir
+`Insira endereços IP válidos`, cancele a edição e crie um novo token com as mesmas
+permissões, sem interagir com a seção de filtragem de IP. Troque o token no `.env`,
+valide a publicação e somente depois revogue o token antigo.
+
+Cada chave deve aparecer somente uma vez no `.env`. Um bloco duplicado no final
+do arquivo com `CLOUDFLARE_API_TOKEN=` vazio pode sobrescrever o bloco preenchido
+e produzir o mesmo erro de ambiente não interativo. Verifique sem mostrar os
+segredos:
+
+```bash
+sudo awk -F= '
+/^CLOUDFLARE_(PAGES_ENABLED|PAGES_PROJECT|PAGES_BRANCH|ACCOUNT_ID|API_TOKEN)=/ {
+  valor=substr($0,index($0,"=")+1)
+  print NR, $1 ": " (length(valor) ? "configurado" : "VAZIO")
+}' /opt/rpa-ponto/.env
+```
+
+Se alguma chave aparecer duas vezes, edite o arquivo com
+`sudo -u rpa-ponto -H nano /opt/rpa-ponto/.env`, remova o bloco duplicado e
+mantenha uma única ocorrência preenchida de cada chave.
 
 Depois da primeira publicação, abra
 <https://rpa-ponto-monitor.pages.dev/> e confirme que o screenshot mais recente

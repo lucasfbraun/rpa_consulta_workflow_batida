@@ -3,6 +3,8 @@
 node_modules/
 __pycache__/
 .pytest_cache/
+.wrangler/
 output/
 playwright-report/
 rpa_recording.py
+worker-configuration.d.ts

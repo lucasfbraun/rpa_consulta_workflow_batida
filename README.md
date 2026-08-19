@@ -167,9 +167,9 @@ Abra esse HTML no navegador para consultar o histórico, a linha do tempo e um
 screenshot de cada ação. As imagens e os dados ficam apenas na máquina local em
 `output/monitor/runs`. Use `MONITOR_OUTPUT_DIR` para trocar a pasta.
 
-`MONITOR_KEEP_RUNS=1` mantém somente a execução mais recente do monitor e apaga
-automaticamente screenshots/JSON anteriores. Essa limpeza nunca remove os
-arquivos `output/AFD*.txt`. Aumente o valor se quiser manter mais execuções.
+`MONITOR_HISTORY_DAYS=3` mantém as execuções e screenshots dos últimos três dias
+e apaga automaticamente os dados mais antigos. Essa limpeza nunca remove os
+arquivos `output/AFD*.txt`.
 
 Para reconstruir o HTML sem executar o ERP:
 
@@ -179,8 +179,10 @@ rpa-ponto report
 
 ## Publicar o relatório na Cloudflare
 
-O relatório completo, incluindo os screenshots, pode ser publicado como um site
-público no Cloudflare Pages. Instale o Wrangler e autentique esta máquina uma vez:
+O relatório completo, incluindo os screenshots, pode ser publicado no Cloudflare
+Pages com login. A validação ocorre na Cloudflare e usa `PONTO_USERNAME` e
+`PONTO_PASSWORD` como secrets; as credenciais não são incluídas no HTML. Instale
+o Wrangler e autentique esta máquina uma vez:
 
 ```powershell
 npm install
@@ -205,6 +207,10 @@ o relatório que já existe, sem executar o ERP:
 ```powershell
 rpa-ponto publish
 ```
+
+Antes de cada publicação, o comando sincroniza somente `PONTO_USERNAME` e
+`PONTO_PASSWORD` como secrets criptografados do projeto Pages. O painel também
+oferece um card para instalação como aplicativo (PWA).
 
 No Linux, use `npx wrangler` no lugar de `npx.cmd wrangler`. Para uma execução
 sem login interativo, defina `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` no

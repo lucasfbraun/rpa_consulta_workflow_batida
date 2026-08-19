@@ -31,7 +31,9 @@ def main() -> int:
     try:
         settings = Settings.from_env()
         if args.command in {"report", "publish"}:
-            report = rebuild_report(settings.monitor_output_dir)
+            report = rebuild_report(
+                settings.monitor_output_dir, settings.monitor_history_days
+            )
             print(f"Relatório HTML: {report.resolve()}")
             if args.command == "publish":
                 _publish(settings, force=True)
@@ -114,6 +116,8 @@ def _publish(settings: Settings, *, force: bool = False) -> None:
         settings.monitor_output_dir,
         settings.cloudflare_pages_project,
         settings.cloudflare_pages_branch,
+        auth_username=settings.ponto_username,
+        auth_password=settings.ponto_password,
     )
     print(f"Relatório online: {url or 'publicado com sucesso'}")
 
